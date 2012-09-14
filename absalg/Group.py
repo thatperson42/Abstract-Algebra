@@ -4,6 +4,7 @@ import itertools
 
 from Set import Set
 from Function import Function
+from matplotlib import pyplot
 
 class GroupElem:
     """
@@ -112,8 +113,8 @@ class GroupElem:
 
 class Group:
     """Group definition"""
-    def __init__(self, G, bin_op):
-        """Create a group, checking group axioms"""
+    def __init__(self, G, bin_op, check=1):
+        """Create a group, checking group axioms if check==1"""
 
         # Test types
         if not isinstance(G, Set): raise TypeError("G must be a set")
@@ -125,10 +126,11 @@ class Group:
             raise TypeError("binary operation must have domain equal to G * G")
 
         # Test associativity
-        if not all(bin_op((a, bin_op((b, c)))) == \
-                   bin_op((bin_op((a, b)), c)) \
-                   for a in G for b in G for c in G):
-            raise ValueError("binary operation is not associative")
+        if check == 1:
+            if not all(bin_op((a, bin_op((b, c)))) == \
+                       bin_op((bin_op((a, b)), c)) \
+                       for a in G for b in G for c in G):
+                raise ValueError("binary operation is not associative")
 
         # Find the identity
         found_id = False
@@ -140,9 +142,10 @@ class Group:
             raise ValueError("G doesn't have an identity")
 
         # Test for inverses
-        for a in G:
-            if not any(bin_op((a,  b)) == e for b in G):
-                raise ValueError("G doesn't have inverses")
+        if check == 1:
+            for a in G:
+                if not any(bin_op((a,  b)) == e for b in G):
+                    raise ValueError("G doesn't have inverses")
 
         # At this point, we've verified that we have a Group.
         # Now determine if the Group is abelian:
@@ -288,6 +291,26 @@ class Group:
 
         return old_sgs
 
+    def orders(self):
+        """Gives orders of the elements of the group in self.orders"""
+        self.orders = [1]
+        for g in self.G:
+            if g != self.e:
+                order = 1
+                new_g = g
+                while new_g != self.e:
+                    new_g = self(new_g, g)
+                    order += 1
+                self.orders.append(order)
+        self.orders.sort()
+        return
+
+    def order_hist(self):
+        """Gives histogram of the orders of elements in the group"""
+        self.orders()
+        pyplot.hist(self.orders, len(self))
+        return
+
 class GroupHomomorphism(Function):
     """
     The definition of a Group Homomorphism
@@ -345,10 +368,10 @@ def Zn(n):
     """ Returns the cylic group of order n"""
     G = Set(range(n))
     bin_op = Function(G * G, G, lambda x: (x[0] + x[1]) % n)
-    return Group(G, bin_op)
+    return Group(G, bin_op, 0)
 
 def Sn(n):
     """ Returns the symmetric group of order n! """
     G = Set(g for g in itertools.permutations(range(n)))
     bin_op = Function(G * G, G, lambda x: tuple(x[0][j] for j in x[1]))
-    return Group(G, bin_op)
+    return Group(G, bin_op, 0)
